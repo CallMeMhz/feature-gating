@@ -1,0 +1,382 @@
+{% extends "base.html" %}
+
+{% block title %}管理员页面 - {{ app_title }}{% endblock %}
+
+{% block content %}
+<div x-data="adminState()" x-init="init()" class="min-h-screen bg-gray-50">
+    <!-- 顶部导航 -->
+    <div class="bg-white shadow">
+        <div class="max-w-7xl mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">管理员控制面板</h1>
+                    <p class="text-sm text-gray-500" x-text="currentTab === 'users' ? '用户管理' : (currentTab === 'projects' ? '项目管理' : '快照历史')"></p>
+                </div>
+                <a href="/" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">
+                    返回主页
+                </a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 标签切换 -->
+    <div class="max-w-7xl mx-auto px-4 pt-6">
+        <div class="border-b border-gray-200">
+            <nav class="-mb-px flex space-x-8">
+                <button 
+                    @click="currentTab = 'users'"
+                    :class="currentTab === 'users' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
+                >
+                    用户管理
+                </button>
+                <button 
+                    @click="currentTab = 'projects'; loadProjects()"
+                    :class="currentTab === 'projects' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
+                >
+                    项目管理
+                </button>
+                <button 
+                    @click="currentTab = 'snapshots'; loadSnapshots()"
+                    :class="currentTab === 'snapshots' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
+                    class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm"
+                >
+                    快照历史
+                </button>
+            </nav>
+        </div>
+    </div>
+    
+    <!-- 主内容区域 -->
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        {% if not user or user.role != 'admin' %}
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+            <p class="text-yellow-800">您需要管理员权限才能访问此页面</p>
+            <a href="/login" class="text-blue-600 hover:text-blue-800 mt-2 inline-block">去登录</a>
+        </div>
+        {% else %}
+        
+        <!-- 用户管理标签页 -->
+        <div x-show="currentTab === 'users'">
+        <!-- 添加用户表单 -->
+        <div class="bg-white rounded-lg shadow p-6 mb-6">
+            <h2 class="text-lg font-semibold mb-4">添加新用户</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <input 
+                    type="text" 
+                    x-model="newUser.username"
+                    placeholder="用户名"
+                    class="px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                <input 
+                    type="password" 
+                    x-model="newUser.password"
+                    placeholder="密码"
+                    class="px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                <select 
+                    x-model="newUser.role"
+                    class="px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                    <option value="user">普通用户</option>
+                    <option value="admin">管理员</option>
+                </select>
+                <button 
+                    @click="createUser()"
+                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                    添加用户
+                </button>
+            </div>
+        </div>
+        
+        <!-- 用户列表 -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-lg font-semibold">用户列表</h2>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">用户名</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">角色</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">创建者</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <template x-for="user in users" :key="user.id">
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" x-text="user.username"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <span 
+                                        :class="user.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'"
+                                        class="px-2 py-1 rounded text-xs"
+                                        x-text="user.role"
+                                    ></span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" x-text="user.created_by"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                                    <button 
+                                        @click="changePassword(user.id)"
+                                        class="text-blue-600 hover:text-blue-900"
+                                    >
+                                        修改密码
+                                    </button>
+                                    <button 
+                                        @click="deleteUser(user.id)"
+                                        class="text-red-600 hover:text-red-900"
+                                    >
+                                        删除
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        </div>
+        
+        <!-- 项目管理标签页 -->
+        <div x-show="currentTab === 'projects'">
+        <!-- 项目列表 -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-lg font-semibold">项目列表</h2>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">项目名称</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">功能项数量</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">创建者</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">创建时间</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <template x-for="project in projects" :key="project.id">
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" x-text="project.name"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    <span class="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs" x-text="(project.items || []).length + ' 个'"></span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" x-text="project.created_by"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" x-text="formatDate(project.created_at)"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button 
+                                        @click="deleteProject(project.id, project.name)"
+                                        class="text-red-600 hover:text-red-900"
+                                    >
+                                        删除
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                        <tr x-show="projects.length === 0">
+                            <td colspan="5" class="px-6 py-8 text-center text-sm text-gray-500">
+                                暂无项目
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        </div>
+        
+        <!-- 快照历史标签页 -->
+        <div x-show="currentTab === 'snapshots'">
+        <!-- 快照列表 -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h2 class="text-lg font-semibold">快照历史</h2>
+                <p class="text-sm text-gray-500 mt-1">包含所有项目的配置快照（项目删除后仍可查看）</p>
+            </div>
+            
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">项目名称</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">更新者</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">更新时间</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">备注</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        <template x-for="snapshot in snapshots" :key="snapshot.id">
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" x-text="snapshot.project_name || '(已删除)'"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" x-text="snapshot.updated_by"></td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" x-text="formatDate(snapshot.updated_at)"></td>
+                                <td class="px-6 py-4 text-sm text-gray-500">
+                                    <span x-text="snapshot.remark || '-'" class="truncate max-w-xs inline-block"></span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <button 
+                                        @click="viewSnapshot(snapshot.id)"
+                                        class="text-blue-600 hover:text-blue-900"
+                                    >
+                                        查看
+                                    </button>
+                                </td>
+                            </tr>
+                        </template>
+                        <tr x-show="snapshots.length === 0">
+                            <td colspan="5" class="px-6 py-8 text-center text-sm text-gray-500">
+                                暂无快照
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        </div>
+        
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function adminState() {
+    return {
+        currentTab: 'users',
+        users: [],
+        projects: [],
+        snapshots: [],
+        newUser: {
+            username: '',
+            password: '',
+            role: 'user'
+        },
+        
+        async init() {
+            await this.loadUsers();
+        },
+        
+        async loadUsers() {
+            const response = await fetch('/api/admin/users');
+            if (response.ok) {
+                this.users = await response.json();
+            }
+        },
+        
+        async loadProjects() {
+            const response = await fetch('/api/projects');
+            if (response.ok) {
+                this.projects = await response.json();
+            }
+        },
+        
+        async loadSnapshots() {
+            // 加载所有快照（不按项目过滤）
+            const response = await fetch('/api/snapshots/all');
+            if (response.ok) {
+                this.snapshots = await response.json();
+            }
+        },
+        
+        async createUser() {
+            if (!this.newUser.username || !this.newUser.password) {
+                window.toastManager.show('请填写用户名和密码', 'warning');
+                return;
+            }
+            
+            const response = await fetch('/api/admin/users', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(this.newUser)
+            });
+            
+            if (response.ok) {
+                window.toastManager.show('用户创建成功', 'success');
+                this.newUser = {username: '', password: '', role: 'user'};
+                await this.loadUsers();
+            } else {
+                const error = await response.json();
+                window.toastManager.show('创建失败: ' + error.detail, 'error');
+            }
+        },
+        
+        async deleteUser(userId) {
+            if (!confirm('确定要删除此用户吗？')) return;
+            
+            const response = await fetch(`/api/admin/users/${userId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                window.toastManager.show('用户已删除', 'success');
+                await this.loadUsers();
+            } else {
+                const error = await response.json();
+                window.toastManager.show('删除失败: ' + error.detail, 'error');
+            }
+        },
+        
+        async changePassword(userId) {
+            const newPassword = prompt('请输入新密码:');
+            if (!newPassword) return;
+            
+            const response = await fetch(`/api/admin/users/${userId}/password`, {
+                method: 'PUT',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({new_password: newPassword})
+            });
+            
+            if (response.ok) {
+                window.toastManager.show('密码已更新', 'success');
+            } else {
+                const error = await response.json();
+                window.toastManager.show('更新失败: ' + error.detail, 'error');
+            }
+        },
+        
+        async deleteProject(projectId, projectName) {
+            if (!confirm(`确定要删除项目「${projectName}」吗？\n\n此操作将删除项目下的所有功能项，且无法恢复！`)) {
+                return;
+            }
+            
+            const response = await fetch(`/api/projects/${projectId}`, {
+                method: 'DELETE'
+            });
+            
+            if (response.ok) {
+                window.toastManager.show(`项目「${projectName}」已删除`, 'success');
+                await this.loadProjects();
+            } else {
+                const error = await response.json();
+                window.toastManager.show('删除失败: ' + error.detail, 'error');
+            }
+        },
+        
+        formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        },
+        
+        async viewSnapshot(snapshotId) {
+            // 使用全局函数（定义在 app.js 中）
+            if (typeof window.viewSnapshot === 'function') {
+                await window.viewSnapshot(snapshotId);
+            }
+        }
+    }
+}
+</script>
+{% endblock %}
+

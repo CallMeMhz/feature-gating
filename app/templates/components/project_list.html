@@ -1,0 +1,12 @@
+<!-- Projects 列表组件 -->
+<template x-for="project in projects" :key="project.id">
+    <div 
+        @click="$root.selectProject(project)"
+        class="p-3 mb-2 rounded cursor-pointer hover:bg-gray-700 transition"
+        :class="{'bg-gray-700': $root.currentProject && $root.currentProject.id === project.id}"
+    >
+        <div class="font-medium" x-text="project.name"></div>
+        <div class="text-xs text-gray-400" x-text="'by ' + project.created_by"></div>
+    </div>
+</template>
+

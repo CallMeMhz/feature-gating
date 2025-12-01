@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+/* 自定义样式 */
+[x-cloak] { 
+  display: none !important; 
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* htmx 加载指示器 */
+.htmx-indicator {
+  display: none;
+}
+
+.htmx-request .htmx-indicator {
+  display: inline-block;
+}
+
+.htmx-request.htmx-indicator {
+  display: inline-block;
+}
+
+/* 平滑过渡 */
+.htmx-swapping {
+  opacity: 0;
+  transition: opacity 200ms ease-in;
+}
+
+.htmx-settling {
+  opacity: 1;
+  transition: opacity 200ms ease-out;
+}
+

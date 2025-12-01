@@ -1,0 +1,17 @@
+{
+  "name": "wawa-fg",
+  "version": "0.1.0",
+  "scripts": {
+    "build": "pnpm run css && pnpm run alpine && pnpm run htmx",
+    "css:dev": "tailwindcss --silent -i ./src/styles.css -o ./static/styles.css --watch",
+    "css": "tailwindcss -i ./src/styles.css -o ./static/styles.css --minify",
+    "alpine": "cp node_modules/alpinejs/dist/cdn.min.js ./static/alpine.min.js",
+    "htmx": "cp node_modules/htmx.org/dist/htmx.min.js ./static/htmx.min.js"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.11",
+    "alpinejs": "^3.14.9",
+    "htmx.org": "^2.0.6",
+    "tailwindcss": "^4.1.11"
+  }
+}

@@ -19,9 +19,10 @@ Feature Gating 管理系统是一个基于 Web 的功能控制平台，支持通
    - 条件表达式配置
 
 3. **灰度条件计算**
-   - 支持多种运算符：`%`, `/`, `//`, `*`
-   - 支持多种比较符：`>`, `<`, `>=`, `<=`, `==`, `!=`
+   - **哈希灰度：** 支持运算符 `%`, `/`, `//`, `*` 和比较符 `>`, `<`, `>=`, `<=`, `==`, `!=`
+   - **白名单机制：** 支持 `==`（直接相等）、`in`（白名单）、`not in`（黑名单）
    - 字段哈希处理：user_id, chat_id
+   - 白名单值格式：支持字符串、逗号分隔、换行分隔、数组
    - 多条件 AND 逻辑
 
 4. **配置快照**
@@ -67,6 +68,7 @@ Feature Gating 管理系统是一个基于 Web 的功能控制平台，支持通
 4. **Schemas** (`app/schemas/`)
    - 请求/响应模型
    - 数据验证
+   - Condition 模型支持多种值类型（int, str, List[str]）
 
 5. **依赖注入** (`app/deps.py`)
    - get_db()
@@ -77,7 +79,7 @@ Feature Gating 管理系统是一个基于 Web 的功能控制平台，支持通
 6. **业务服务** (`app/services/`)
    - auth.py: 认证服务（密码哈希、JWT）
    - hash.py: 字段哈希处理
-   - evaluator.py: 条件表达式计算引擎
+   - evaluator.py: 条件表达式计算引擎（支持哈希灰度 + 白名单机制）
    - cache.py: 内存缓存管理
 
 7. **API 路由** (`app/routers/`)
@@ -96,7 +98,7 @@ Feature Gating 管理系统是一个基于 Web 的功能控制平台，支持通
    - login.html: 登录页面
    - index.html: 主页面（抽屉式布局）
    - admin.html: 管理员页面
-   - components/: 可复用组件
+   - components/item_card.html: 条件编辑器（根据操作符类型动态显示不同输入界面）
 
 2. **静态资源** (`app/static/`)
    - custom.css: 自定义样式
@@ -105,21 +107,30 @@ Feature Gating 管理系统是一个基于 Web 的功能控制平台，支持通
 3. **前端技术栈**
    - Tailwind CSS: UI 样式
    - htmx: AJAX 交互
-   - Alpine.js: 状态管理
+   - Alpine.js: 状态管理 + 动态表单（根据操作符类型切换输入界面）
 
 ### ✅ 配置与部署
 
 1. **项目配置**
    - pyproject.toml: Python 依赖管理
    - .gitignore: Git 忽略规则
-   - docker-compose.yml: MongoDB 容器配置
 
-2. **环境配置**
+2. **Docker 部署**
+   - Dockerfile: 多阶段构建（前端 + 后端）
+   - docker-compose.yml: 完整应用栈（MongoDB + 应用）
+   - .dockerignore: Docker 构建排除规则
+   - env.example: 环境变量配置示例
+   - DOCKER.md: Docker 部署文档
+   - scripts/verify-docker.sh: Docker 环境验证脚本
+
+3. **环境配置**
    - config.py: 配置管理
    - .env 支持
 
-3. **文档**
+4. **文档**
    - README.md: 项目介绍和快速开始
+   - DOCKER.md: Docker 部署指南
+   - INSTALLATION.md: 详细安装文档
    - INSTALLATION.md: 详细安装指南
    - USAGE.md: 使用手册
 
@@ -173,10 +184,12 @@ wawa-fg/
 │       │   └── custom.css
 │       └── js/
 │           └── app.js
+├── docker-compose.yml          # Docker 配置
 ├── pyproject.toml             # Python 配置
 ├── .gitignore                 # Git 忽略
 ├── test_api.py                # 测试脚本
 ├── README.md                  # 项目说明
+├── INSTALLATION.md            # 安装指南
 ├── USAGE.md                   # 使用手册
 └── PROJECT_SUMMARY.md         # 项目总结
 ```
@@ -224,12 +237,32 @@ wawa-fg/
 1. **异步架构**：全异步 FastAPI + Motor，高性能
 2. **依赖注入**：标准的 FastAPI 依赖注入模式
 3. **类型安全**：Pydantic 模型验证
-4. **灵活灰度**：基于哈希的条件表达式系统
+4. **灵活灰度**：支持哈希灰度 + 白名单/黑名单机制，满足多种场景
 5. **性能优化**：TTL 缓存减少数据库查询
-6. **现代前端**：无需构建的现代化 UI
+6. **现代前端**：Alpine.js + Tailwind CSS，响应式 UI
 7. **安全性**：JWT 认证 + 密码哈希 + HttpOnly Cookie
 
 ## 快速开始
+
+### 方式 1：Docker Compose（推荐）
+
+一条命令启动整个应用：
+
+```bash
+# 启动所有服务（MongoDB + 应用）
+docker-compose up -d
+
+# 查看日志
+docker-compose logs -f
+```
+
+访问系统：http://localhost:8000
+
+默认管理员账号：`admin` / `admin`
+
+详细文档：[DOCKER.md](DOCKER.md)
+
+### 方式 2：本地开发
 
 1. **安装依赖**：
    ```bash
@@ -243,11 +276,14 @@ wawa-fg/
 
 2. **启动 MongoDB**：
    ```bash
-   docker-compose up -d
+   docker-compose up -d mongodb
    ```
 
 3. **配置环境**：
-   创建 `.env` 文件并配置
+   ```bash
+   cp env.example .env
+   # 编辑 .env 文件
+   ```
 
 4. **启动应用**：
    ```bash
@@ -259,13 +295,32 @@ wawa-fg/
 
 ## 使用示例
 
-### Web 界面
+### 示例 1：哈希灰度发布
 
 1. 登录系统
 2. 创建项目 "main"
 3. 添加功能项 "new_chat_ui"
 4. 配置条件：`hash(user_id) % 10 < 2`（20% 灰度）
 5. 保存配置
+
+### 示例 2：白名单精确控制
+
+1. 添加功能项 "vip_feature"
+2. 点击"+ 添加"选择"白名单 in"
+3. 输入白名单用户（支持换行或逗号分隔）：
+   ```
+   uid_1001
+   uid_1002
+   uid_8555
+   ```
+4. 保存配置
+
+### 示例 3：组合条件
+
+配置白名单用户 + 城市灰度：
+- 条件 1：`user_id in [uid_1, uid_2, uid_3]`
+- 条件 2：`hash(city) % 10 < 5`
+- 结果：只对白名单内的用户进行城市灰度
 
 ### API 调用
 

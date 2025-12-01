@@ -58,17 +58,32 @@
     <div>
         <div class="flex justify-between items-center mb-2">
             <label class="text-xs font-medium text-gray-700">条件</label>
-            <button 
-                @click="item.conditions.push({field: 'user_id', operator: '%', value: 10, comparator: '>', target: 1}); hasUnsavedChanges = true"
-                class="text-blue-600 text-xs hover:text-blue-700"
-            >
-                + 添加
-            </button>
+            <div class="relative" x-data="{showMenu: false}">
+                <button 
+                    @click="showMenu = !showMenu"
+                    class="text-blue-600 text-xs hover:text-blue-700"
+                >
+                    + 添加
+                </button>
+                <div 
+                    x-show="showMenu" 
+                    @click.away="showMenu = false"
+                    x-cloak
+                    class="absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded shadow-lg z-10 text-xs"
+                >
+                    <button @click="item.conditions.push({field: 'user_id', operator: '%', value: 10, comparator: '>', target: 1}); hasUnsavedChanges = true; showMenu = false" class="block w-full text-left px-3 py-2 hover:bg-gray-100">哈希灰度</button>
+                    <button @click="item.conditions.push({field: 'user_id', operator: '==', value: ''}); hasUnsavedChanges = true; showMenu = false" class="block w-full text-left px-3 py-2 hover:bg-gray-100">直接相等 ==</button>
+                    <button @click="item.conditions.push({field: 'user_id', operator: '!=', value: ''}); hasUnsavedChanges = true; showMenu = false" class="block w-full text-left px-3 py-2 hover:bg-gray-100">直接不等 !=</button>
+                    <button @click="item.conditions.push({field: 'user_id', operator: 'in', value: ''}); hasUnsavedChanges = true; showMenu = false" class="block w-full text-left px-3 py-2 hover:bg-gray-100">白名单 in</button>
+                    <button @click="item.conditions.push({field: 'user_id', operator: 'not in', value: ''}); hasUnsavedChanges = true; showMenu = false" class="block w-full text-left px-3 py-2 hover:bg-gray-100">黑名单 not in</button>
+                </div>
+            </div>
         </div>
         
         <div class="space-y-2">
             <template x-for="(cond, idx) in item.conditions" :key="idx">
                 <div class="p-2 bg-gray-50 rounded border border-gray-200 text-xs space-y-1">
+                    <!-- 字段选择和删除按钮 -->
                     <div class="flex items-center space-x-1">
                         <select x-model="cond.field" @change="hasUnsavedChanges = true" class="flex-1 px-1 py-1 border border-gray-300 rounded text-xs">
                             <option value="user_id">user_id</option>
@@ -81,28 +96,79 @@
                         </button>
                     </div>
                     
-                    <div class="grid grid-cols-4 gap-1">
-                        <select x-model="cond.operator" @change="hasUnsavedChanges = true" class="px-1 py-1 border border-gray-300 rounded text-xs">
-                            <option value="%">%</option>
-                            <option value="/">/</option>
-                            <option value="//">//</option>
-                            <option value="*">*</option>
+                    <!-- 操作符选择 -->
+                    <div>
+                        <select x-model="cond.operator" @change="hasUnsavedChanges = true" class="w-full px-1 py-1 border border-gray-300 rounded text-xs">
+                            <optgroup label="哈希灰度">
+                                <option value="%">% (取模)</option>
+                                <option value="/">/  (除法)</option>
+                                <option value="//">//  (整除)</option>
+                                <option value="*">*  (乘法)</option>
+                            </optgroup>
+                            <optgroup label="白名单机制">
+                                <option value="==">== (直接相等)</option>
+                                <option value="!=">!= (直接不等)</option>
+                                <option value="in">in (白名单)</option>
+                                <option value="not in">not in (黑名单)</option>
+                            </optgroup>
                         </select>
-                        <input type="number" x-model.number="cond.value" @input="hasUnsavedChanges = true" class="px-1 py-1 border border-gray-300 rounded text-xs">
-                        <select x-model="cond.comparator" @change="hasUnsavedChanges = true" class="px-1 py-1 border border-gray-300 rounded text-xs">
-                            <option value=">">></option>
-                            <option value="<"><</option>
-                            <option value=">=">=</option>
-                            <option value="<="><=</option>
-                            <option value="==">=</option>
-                            <option value="!=">!=</option>
-                        </select>
-                        <input type="number" x-model.number="cond.target" @input="hasUnsavedChanges = true" class="px-1 py-1 border border-gray-300 rounded text-xs">
                     </div>
                     
-                    <div class="text-xs text-gray-500">
-                        hash(<span x-text="cond.field"></span>) <span x-text="cond.operator"></span> <span x-text="cond.value"></span> <span x-text="cond.comparator"></span> <span x-text="cond.target"></span>
-                    </div>
+                    <!-- 哈希运算类型：显示 4 个输入框 -->
+                    <template x-if="['%', '/', '//', '*'].includes(cond.operator)">
+                        <div>
+                            <div class="grid grid-cols-4 gap-1">
+                                <input type="number" x-model.number="cond.value" @input="hasUnsavedChanges = true" class="px-1 py-1 border border-gray-300 rounded text-xs" placeholder="值">
+                                <select x-model="cond.comparator" @change="hasUnsavedChanges = true" class="px-1 py-1 border border-gray-300 rounded text-xs">
+                                    <option value=">">></option>
+                                    <option value="<"><</option>
+                                    <option value=">=">=</option>
+                                    <option value="<="><=</option>
+                                    <option value="==">=</option>
+                                    <option value="!=">!=</option>
+                                </select>
+                                <input type="number" x-model.number="cond.target" @input="hasUnsavedChanges = true" class="px-1 py-1 border border-gray-300 rounded text-xs" placeholder="目标">
+                                <div class="text-xs text-gray-500 col-span-4">
+                                    hash(<span x-text="cond.field"></span>) <span x-text="cond.operator"></span> <span x-text="cond.value"></span> <span x-text="cond.comparator"></span> <span x-text="cond.target"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                    
+                    <!-- 直接比较类型：显示一个值输入框 -->
+                    <template x-if="['==', '!='].includes(cond.operator)">
+                        <div>
+                            <input 
+                                type="text" 
+                                x-model="cond.value" 
+                                @input="hasUnsavedChanges = true" 
+                                class="w-full px-2 py-1 border border-gray-300 rounded text-xs" 
+                                placeholder="例如：uid_8555"
+                            >
+                            <div class="text-xs text-gray-500 mt-1">
+                                <span x-text="cond.field"></span> <span x-text="cond.operator"></span> '<span x-text="cond.value"></span>'
+                            </div>
+                        </div>
+                    </template>
+                    
+                    <!-- 白名单/黑名单类型：显示文本区域 -->
+                    <template x-if="['in', 'not in'].includes(cond.operator)">
+                        <div>
+                            <textarea 
+                                x-model="cond.value" 
+                                @input="hasUnsavedChanges = true" 
+                                rows="3"
+                                class="w-full px-2 py-1 border border-gray-300 rounded text-xs font-mono" 
+                                placeholder="每行一个ID，或用逗号分隔&#10;例如：&#10;uid_1&#10;uid_2&#10;uid_3"
+                            ></textarea>
+                            <div class="text-xs text-gray-400 mt-1">
+                                💡 支持每行一个ID，或用逗号分隔
+                            </div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                <span x-text="cond.field"></span> <span x-text="cond.operator"></span> [<span x-text="typeof cond.value === 'string' ? cond.value.split(/[\n,]/).filter(v => v.trim()).length : cond.value.length"></span> 个]
+                            </div>
+                        </div>
+                    </template>
                 </div>
             </template>
         </div>

@@ -7,12 +7,15 @@
 
 ## 功能特性
 
-- 🎯 **灵活的条件表达式**: 支持基于哈希的条件计算，如 `hash(user_id) % 10 < 2` 实现 20% 灰度
+- 🎯 **灵活的条件表达式**: 支持哈希灰度 + 白名单/黑名单机制
 - 📊 **多项目管理**: 支持多个项目，每个项目可包含多个功能项
 - 🔐 **用户权限控制**: 基于 JWT 的认证系统，支持普通用户和管理员角色
 - 💾 **配置快照**: 每次保存自动创建 YAML 快照，支持查看历史记录
 - ⚡ **高性能缓存**: 内存缓存支持，可配置缓存过期时间
+- 🐳 **Docker 支持**: 一条命令启动完整应用栈
 - 🌐 **现代化 UI**: 基于 Tailwind CSS + htmx + Alpine.js 的响应式界面
+
+> 📖 **快速开始？** 查看 [QUICKSTART.md](QUICKSTART.md) 30 秒启动应用
 
 ## 技术栈
 
@@ -29,14 +32,41 @@
 
 ## 快速开始
 
-### 1. 环境要求
+### 🐳 方式 1：Docker Compose（推荐）
+
+最简单的启动方式，一条命令搞定：
+
+```bash
+# 启动所有服务（MongoDB + 应用）
+docker-compose up -d
+
+# 查看日志
+docker-compose logs -f
+
+# 停止服务
+docker-compose down
+```
+
+访问应用：http://localhost:8000
+
+默认管理员账号：
+- 用户名：`admin`
+- 密码：`admin`
+
+⚠️ **生产环境请务必修改默认密码和密钥！** 详见 [DOCKER.md](DOCKER.md)
+
+---
+
+### 💻 方式 2：本地开发
+
+#### 1. 环境要求
 
 - Python 3.10+
 - MongoDB 4.0+
 - [uv](https://docs.astral.sh/uv/) - Python 包管理工具
 - pnpm (或 npm)
 
-### 2. 安装依赖
+#### 2. 安装依赖
 
 ```bash
 # Python 依赖（uv 会自动创建虚拟环境）
@@ -46,7 +76,7 @@ uv sync
 pnpm install
 ```
 
-### 3. 构建前端资源
+#### 3. 构建前端资源
 
 ```bash
 pnpm run build
@@ -56,13 +86,21 @@ pnpm run build
 - 编译 Tailwind CSS
 - 复制 Alpine.js、htmx 到 static 目录
 
-### 4. 配置环境变量
+#### 4. 配置环境变量
 
-创建 `.env` 文件：
+```bash
+# 复制环境变量示例文件
+cp env.example .env
+
+# 编辑 .env 文件
+vim .env
+```
+
+示例配置：
 
 ```env
 # 应用配置
-APP_TITLE=Feature Gating  # 自定义网站标题
+APP_TITLE=Feature Gating
 
 # MongoDB 配置
 MONGO_URL=mongodb://localhost:27017/wawa-fg
@@ -78,17 +116,17 @@ JWT_SECRET_KEY=your-secret-key-here-change-in-production
 CACHE_TTL_SECONDS=60
 ```
 
-### 5. 启动 MongoDB
+#### 5. 启动 MongoDB
 
-使用 Docker Compose：
+使用 Docker Compose（仅启动 MongoDB）：
 
 ```bash
-docker-compose up -d
+docker-compose up -d mongodb
 ```
 
 或者使用本地 MongoDB 服务。
 
-### 6. 运行应用
+#### 6. 运行应用
 
 ```bash
 # 使用 uv 运行

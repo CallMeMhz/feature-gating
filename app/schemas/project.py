@@ -1,6 +1,6 @@
 """项目 Schemas"""
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Union
 from datetime import datetime
 
 
@@ -8,9 +8,9 @@ class Condition(BaseModel):
     """条件"""
     field: str
     operator: str
-    value: int
-    comparator: str
-    target: int
+    value: Union[int, str, List[str]]  # 支持数字、字符串、字符串数组
+    comparator: Optional[str] = None  # 对于白名单操作符，comparator 可选
+    target: Optional[Union[int, str]] = None  # 对于白名单操作符，target 可选
 
 
 class Item(BaseModel):

@@ -20,10 +20,16 @@ def hash_chat_id(chat_id: str) -> int:
     return hash_field(chat_id)
 
 
+def hash_email(email: str) -> int:
+    """对 email 进行哈希"""
+    return hash_field(email)
+
+
 # 字段哈希映射
 FIELD_HASHERS = {
     "user_id": hash_user_id,
     "chat_id": hash_chat_id,
+    "email": hash_email,
 }
 
 

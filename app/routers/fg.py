@@ -16,6 +16,7 @@ class FGCheckRequest(BaseModel):
     key: str
     user_id: Optional[str] = None
     chat_id: Optional[str] = None
+    email: Optional[str] = None
 
 
 class FGCheckResponse(BaseModel):
@@ -30,10 +31,11 @@ async def check_feature_gate(
     key: str,
     user_id: Optional[str] = None,
     chat_id: Optional[str] = None,
+    email: Optional[str] = None,
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """检查功能是否对特定用户生效（GET 请求）"""
-    return await _check_feature_gate(project, key, user_id, chat_id, db)
+    return await _check_feature_gate(project, key, user_id, chat_id, email, db)
 
 
 @router.post("/check", response_model=FGCheckResponse)
@@ -47,6 +49,7 @@ async def check_feature_gate_post(
         request.key,
         request.user_id,
         request.chat_id,
+        request.email,
         db
     )
 
@@ -56,6 +59,7 @@ async def _check_feature_gate(
     key: str,
     user_id: Optional[str],
     chat_id: Optional[str],
+    email: Optional[str],
     db: AsyncIOMotorDatabase
 ) -> FGCheckResponse:
     """Feature Gate 检查核心逻辑"""
@@ -101,6 +105,8 @@ async def _check_feature_gate(
         context["user_id"] = user_id
     if chat_id:
         context["chat_id"] = chat_id
+    if email:
+        context["email"] = email
     
     # 5. 计算条件
     conditions = cached_item.get("conditions", [])

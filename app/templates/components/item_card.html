@@ -88,6 +88,7 @@
                         <select x-model="cond.field" @change="hasUnsavedChanges = true" class="flex-1 px-1 py-1 border border-gray-300 rounded text-xs">
                             <option value="user_id">user_id</option>
                             <option value="chat_id">chat_id</option>
+                            <option value="email">email</option>
                         </select>
                         <button @click="item.conditions.splice(idx, 1); hasUnsavedChanges = true" class="text-red-500 hover:text-red-700">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

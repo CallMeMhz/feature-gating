@@ -12,7 +12,32 @@
 - **Key**: 唯一标识符
 - **Description**: 功能描述
 - **Enabled**: 总开关
-- **Conditions**: 灰度条件列表
+- **Condition Groups**: 条件组列表（推荐使用，支持 AND/OR 逻辑）
+- **Conditions**: 灰度条件列表（旧版，仅 AND 逻辑，向后兼容）
+
+### Condition Group（条件组）
+
+条件组支持更灵活的逻辑组合：
+- **组间逻辑**：OR（任一组满足即可）
+- **组内逻辑**：可配置 AND 或 OR
+
+示例结构：
+```json
+{
+  "condition_groups": [
+    {
+      "logic": "and",
+      "conditions": [...]
+    },
+    {
+      "logic": "or",
+      "conditions": [...]
+    }
+  ]
+}
+```
+
+评估逻辑：`(组1的结果) OR (组2的结果) OR ...`
 
 ### Condition（条件）
 
@@ -101,6 +126,51 @@ target: 30
 ```
 
 计算：`20 <= hash(user_id) % 100 < 30`（10% 用户）
+
+**场景 4: 白名单用户 OR 灰度比例（使用条件组）**
+
+希望白名单用户始终可以访问，同时对非白名单用户进行 20% 灰度：
+
+```json
+{
+  "condition_groups": [
+    {
+      "logic": "and",
+      "conditions": [
+        {"field": "user_id", "operator": "in", "value": "vip_user1\nvip_user2\nvip_user3"}
+      ]
+    },
+    {
+      "logic": "and",
+      "conditions": [
+        {"field": "user_id", "operator": "%", "value": 100, "comparator": "<", "target": 20}
+      ]
+    }
+  ]
+}
+```
+
+计算：`(user_id in 白名单) OR (hash(user_id) % 100 < 20)`
+
+**场景 5: 复杂条件组合（多条件组内 AND）**
+
+仅对特定邮箱后缀且命中灰度的用户开放：
+
+```json
+{
+  "condition_groups": [
+    {
+      "logic": "and",
+      "conditions": [
+        {"field": "email", "operator": "in", "value": "@company.com\n@partner.com"},
+        {"field": "user_id", "operator": "%", "value": 100, "comparator": "<", "target": 50}
+      ]
+    }
+  ]
+}
+```
+
+计算：`(email 包含 @company.com 或 @partner.com) AND (命中 50% 灰度)`
 
 ### 5. 保存配置
 

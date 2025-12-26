@@ -5,12 +5,19 @@ from pydantic import BaseModel, Field
 from bson import ObjectId
 
 
+class ConditionGroupData(BaseModel):
+    """条件组数据（组内按 logic 逻辑，组间 OR）"""
+    logic: str = "and"  # 组内逻辑: "and" | "or"
+    conditions: List[dict] = []
+
+
 class ItemData(BaseModel):
     """Item 数据（嵌入在 Project 中）"""
     name: str
     description: str = ""
     enabled: bool = True
-    conditions: List[dict] = []
+    conditions: List[dict] = []  # 保留，向后兼容
+    condition_groups: List[ConditionGroupData] = []  # 新增：条件分组
 
 
 class ProjectModel(BaseModel):

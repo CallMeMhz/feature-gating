@@ -116,17 +116,63 @@ def evaluate_condition(condition: Dict[str, Any], context: Dict[str, str]) -> bo
         return False
 
 
-def evaluate_conditions(conditions: List[Dict[str, Any]], context: Dict[str, str]) -> bool:
+def evaluate_conditions(conditions: List[Dict[str, Any]], context: Dict[str, str], logic: str = "and") -> bool:
     """
-    计算所有条件（AND 逻辑）
-    所有条件都满足才返回 True
+    计算所有条件
+    
+    Args:
+        conditions: 条件列表
+        context: 上下文变量
+        logic: 逻辑类型 "and" 或 "or"，默认 "and"
+    
+    Returns:
+        - logic="and": 所有条件都满足才返回 True
+        - logic="or": 任一条件满足即返回 True
     """
     if not conditions:
         return True
     
-    for condition in conditions:
-        if not evaluate_condition(condition, context):
-            return False
+    if logic == "or":
+        # OR 逻辑：任一条件满足即可
+        for condition in conditions:
+            if evaluate_condition(condition, context):
+                return True
+        return False
+    else:
+        # AND 逻辑（默认）：所有条件都满足
+        for condition in conditions:
+            if not evaluate_condition(condition, context):
+                return False
+        return True
+
+
+def evaluate_condition_group(group: Dict[str, Any], context: Dict[str, str]) -> bool:
+    """
+    计算单个条件组
     
-    return True
+    组结构：
+    {
+        "logic": "and" | "or",  # 组内逻辑，默认 "and"
+        "conditions": [...]
+    }
+    """
+    logic = group.get("logic", "and")
+    conditions = group.get("conditions", [])
+    return evaluate_conditions(conditions, context, logic)
+
+
+def evaluate_condition_groups(groups: List[Dict[str, Any]], context: Dict[str, str]) -> bool:
+    """
+    计算多个条件组（组间 OR 逻辑）
+    
+    任一组满足即返回 True
+    """
+    if not groups:
+        return True
+    
+    for group in groups:
+        if evaluate_condition_group(group, context):
+            return True
+    
+    return False
 

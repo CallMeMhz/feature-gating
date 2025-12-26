@@ -13,12 +13,19 @@ class Condition(BaseModel):
     target: Optional[Union[int, str]] = None  # 对于白名单操作符，target 可选
 
 
+class ConditionGroup(BaseModel):
+    """条件组（组内按 logic 逻辑，组间 OR）"""
+    logic: str = "and"  # 组内逻辑: "and" | "or"
+    conditions: List[Condition] = []
+
+
 class Item(BaseModel):
     """Item"""
     name: str
     description: str = ""
     enabled: bool = True
-    conditions: List[Condition] = []
+    conditions: List[Condition] = []  # 保留，向后兼容
+    condition_groups: List[ConditionGroup] = []  # 新增：条件分组
 
 
 class ProjectCreate(BaseModel):

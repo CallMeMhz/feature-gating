@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing import Optional
 from app.deps import get_db
 from app.services.cache import get_cached_item, set_cached_item
-from app.services.evaluator import evaluate_conditions
+from app.services.evaluator import evaluate_conditions, evaluate_condition_groups
 
 router = APIRouter(prefix="/api/fg", tags=["feature-gate"])
 
@@ -91,7 +91,8 @@ async def _check_feature_gate(
         # 缓存 item（使用小写的 key 作为缓存键）
         cached_item = {
             "enabled": item.get("enabled", True),
-            "conditions": item.get("conditions", [])
+            "conditions": item.get("conditions", []),
+            "condition_groups": item.get("condition_groups", [])
         }
         set_cached_item(project, key_lower, cached_item)
     
@@ -109,13 +110,19 @@ async def _check_feature_gate(
         context["email"] = email
     
     # 5. 计算条件
+    condition_groups = cached_item.get("condition_groups", [])
     conditions = cached_item.get("conditions", [])
-    if not conditions:
-        # 没有条件，直接返回 enabled
-        return FGCheckResponse(enabled=True, key=key)
     
-    # 所有条件都满足才返回 True
-    result = evaluate_conditions(conditions, context)
+    # 优先使用 condition_groups（分组逻辑），否则回退到 conditions（向后兼容）
+    if condition_groups:
+        # 分组逻辑：组间 OR，组内按各组的 logic 配置
+        result = evaluate_condition_groups(condition_groups, context)
+    elif conditions:
+        # 向后兼容：使用原有的 conditions，AND 逻辑
+        result = evaluate_conditions(conditions, context)
+    else:
+        # 没有任何条件，直接返回 enabled
+        return FGCheckResponse(enabled=True, key=key)
     
     return FGCheckResponse(enabled=result, key=key)
 

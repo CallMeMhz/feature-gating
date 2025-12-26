@@ -2,10 +2,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List, Dict
 from app.deps import get_db
 from app.services.cache import get_cached_item, set_cached_item
 from app.services.evaluator import evaluate_conditions, evaluate_condition_groups
+from app.schemas.project import Item
 
 router = APIRouter(prefix="/api/fg", tags=["feature-gate"])
 
@@ -23,6 +24,60 @@ class FGCheckResponse(BaseModel):
     """FG 检查响应"""
     enabled: bool
     key: str
+
+
+class FGDebugResponse(BaseModel):
+    """调试响应"""
+    results: Dict[str, bool]  # key -> enabled
+
+
+class FGDebugRequest(BaseModel):
+    """调试请求 - 使用 draft 配置检测"""
+    items: List[Item]
+    user_id: Optional[str] = None
+    chat_id: Optional[str] = None
+    email: Optional[str] = None
+
+
+@router.post("/debug", response_model=FGDebugResponse)
+async def debug_feature_gate(request: FGDebugRequest):
+    """使用 draft 配置检测命中情况（不需要保存）"""
+    results = {}
+    
+    # 构建上下文
+    context = {}
+    if request.user_id:
+        context["user_id"] = request.user_id
+    if request.chat_id:
+        context["chat_id"] = request.chat_id
+    if request.email:
+        context["email"] = request.email
+    
+    for item in request.items:
+        if not item.name or not item.name.strip():
+            continue
+            
+        # 检查 enabled
+        if not item.enabled:
+            results[item.name] = False
+            continue
+        
+        # 转换为 dict 格式供 evaluator 使用
+        condition_groups = [g.model_dump() for g in item.condition_groups]
+        conditions = [c.model_dump() for c in item.conditions]
+        
+        # 优先使用 condition_groups
+        if condition_groups:
+            result = evaluate_condition_groups(condition_groups, context)
+        elif conditions:
+            result = evaluate_conditions(conditions, context)
+        else:
+            # 没有条件，直接返回 enabled
+            result = True
+        
+        results[item.name] = result
+    
+    return FGDebugResponse(results=results)
 
 
 @router.get("/check", response_model=FGCheckResponse)

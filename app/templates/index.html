@@ -77,6 +77,60 @@
             </div>
         </div>
         
+        <!-- 调试栏 -->
+        <div x-show="currentProject" class="bg-gray-50 border-b border-gray-200 px-4 py-2">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-xs font-medium text-gray-400 shrink-0">调试</span>
+                <input 
+                    type="text" 
+                    x-model="debugUserId"
+                    @keyup.enter="runDebugCheck()"
+                    placeholder="user_id"
+                    class="flex-1 min-w-[100px] max-w-[200px] px-2 py-1 text-sm bg-white border border-gray-300 rounded focus:outline-none focus:border-blue-400"
+                >
+                <input 
+                    type="text" 
+                    x-model="debugChatId"
+                    @keyup.enter="runDebugCheck()"
+                    placeholder="chat_id"
+                    class="flex-1 min-w-[100px] max-w-[200px] px-2 py-1 text-sm bg-white border border-gray-300 rounded focus:outline-none focus:border-blue-400"
+                >
+                <input 
+                    type="text" 
+                    x-model="debugEmail"
+                    @keyup.enter="runDebugCheck()"
+                    placeholder="email"
+                    class="flex-1 min-w-[100px] max-w-[200px] px-2 py-1 text-sm bg-white border border-gray-300 rounded focus:outline-none focus:border-blue-400"
+                >
+                <button 
+                    @click="runDebugCheck()"
+                    :disabled="debugLoading || (!debugUserId && !debugChatId && !debugEmail)"
+                    class="px-3 py-1 text-xs rounded shrink-0 transition"
+                    :class="(!debugLoading && (debugUserId || debugChatId || debugEmail)) ? 'bg-blue-500 text-white hover:bg-blue-600' : 'bg-gray-200 text-gray-400 cursor-not-allowed'"
+                >
+                    <template x-if="debugLoading">
+                        <svg class="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                        </svg>
+                    </template>
+                    <span x-show="!debugLoading">检测</span>
+                </button>
+                <template x-if="Object.keys(debugResults).length > 0">
+                    <span class="text-xs text-gray-500 shrink-0">
+                        <span class="font-medium text-emerald-600" x-text="Object.values(debugResults).filter(v => v).length"></span>/<span x-text="Object.keys(debugResults).length"></span>
+                    </span>
+                </template>
+                <button 
+                    x-show="debugUserId || debugChatId || debugEmail || Object.keys(debugResults).length > 0"
+                    @click="clearDebug()"
+                    class="text-xs text-gray-400 hover:text-gray-600 shrink-0"
+                >
+                    清除
+                </button>
+            </div>
+        </div>
+        
         <div class="flex-1 overflow-y-auto p-6">
             <template x-if="!currentProject">
                 <div class="text-gray-500 text-center py-12">
@@ -91,10 +145,24 @@
             </template>
             
             <!-- 响应式 Grid: 最小宽度 320px，自动填充 -->
-            <div class="grid gap-4" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">
+            <div class="grid gap-4 pb-8" style="grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));">
                 <template x-for="(item, index) in items" :key="index">
-                    <div class="bg-white rounded-lg shadow p-4 border border-gray-200">
-                        {% include 'components/item_card.html' %}
+                    <div 
+                        class="shadow-sm border border-gray-200 relative"
+                        :class="{
+                            'opacity-40': isItemHit(item.name) === false
+                        }"
+                        :style="isItemHit(item.name) === true ? 'outline: 3px solid #22c55e;' : ''"
+                    >
+                        <!-- 未保存提示条 -->
+                        <div 
+                            x-show="isItemModified(index) || isItemNew(index)"
+                            class="bg-amber-400 text-amber-900 text-xs font-medium px-3 py-1 text-center rounded-t-lg"
+                            x-text="isItemNew(index) ? '新增' : '未保存'"
+                        ></div>
+                        <div class="p-4 bg-white rounded-b-lg">
+                            {% include 'components/item_card.html' %}
+                        </div>
                     </div>
                 </template>
             </div>
@@ -180,6 +248,12 @@ function appState() {
         newProjectName: '',
         projects: [],
         snapshotRemark: '',
+        // 调试相关
+        debugUserId: '',
+        debugChatId: '',
+        debugEmail: '',
+        debugResults: {},
+        debugLoading: false,
         
         init() {
             // 如果已登录，加载项目列表
@@ -209,7 +283,81 @@ function appState() {
             this.items = JSON.parse(JSON.stringify(project.items || []));
             this.originalItems = JSON.parse(JSON.stringify(project.items || []));
             this.hasUnsavedChanges = false;
+            this.debugResults = {}; // 清空调试结果
             this.loadSnapshots();
+        },
+        
+        async runDebugCheck() {
+            if (!this.currentProject || (!this.debugUserId && !this.debugChatId && !this.debugEmail)) return;
+            
+            // 过滤有效的 items
+            const validItems = this.items.filter(item => item.name && item.name.trim());
+            if (validItems.length === 0) return;
+            
+            this.debugLoading = true;
+            this.debugResults = {};
+            
+            try {
+                // 使用 debug 接口，发送当前编辑中的 draft 配置
+                const response = await fetch('/api/fg/debug', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        items: validItems.map(item => ({
+                            name: item.name,
+                            enabled: item.enabled,
+                            conditions: item.conditions || [],
+                            condition_groups: item.condition_groups || []
+                        })),
+                        user_id: this.debugUserId || null,
+                        chat_id: this.debugChatId || null,
+                        email: this.debugEmail || null
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    this.debugResults = data.results;
+                }
+            } catch (e) {
+                console.error('检测失败:', e);
+            } finally {
+                this.debugLoading = false;
+            }
+        },
+        
+        clearDebugResults() {
+            this.debugResults = {};
+        },
+        
+        clearDebug() {
+            this.debugUserId = '';
+            this.debugChatId = '';
+            this.debugEmail = '';
+            this.debugResults = {};
+        },
+        
+        isItemHit(itemName) {
+            if (!itemName || Object.keys(this.debugResults).length === 0) return null;
+            const key = itemName.toLowerCase();
+            // 检查是否在结果中（key 大小写不敏感匹配）
+            for (const [k, v] of Object.entries(this.debugResults)) {
+                if (k.toLowerCase() === key) return v;
+            }
+            return null;
+        },
+        
+        isItemModified(index) {
+            // 如果是新增的 item，不算修改
+            if (index >= this.originalItems.length) return false;
+            // 比较当前 item 和原始 item
+            const current = JSON.stringify(this.items[index]);
+            const original = JSON.stringify(this.originalItems[index]);
+            return current !== original;
+        },
+        
+        isItemNew(index) {
+            return index >= this.originalItems.length;
         },
         
         async loadSnapshots() {

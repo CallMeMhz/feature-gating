@@ -99,9 +99,13 @@
                             </div>
                             <div class="flex items-center space-x-2">
                                 <!-- 添加条件按钮 -->
-                                <div class="relative" x-data="{showMenu: false}">
+                                <div class="relative" x-data="{showMenu: false, menuStyle: ''}" @keydown.escape="showMenu = false">
                                     <button 
-                                        @click="showMenu = !showMenu"
+                                        @click="
+                                            const rect = $el.getBoundingClientRect();
+                                            menuStyle = 'top:' + (rect.bottom + 4) + 'px;left:' + (rect.right - 160) + 'px;';
+                                            showMenu = !showMenu;
+                                        "
                                         class="text-blue-500 text-xs hover:text-blue-600 font-medium"
                                     >
                                         + 条件
@@ -110,7 +114,9 @@
                                         x-show="showMenu" 
                                         @click.away="showMenu = false"
                                         x-cloak
-                                        class="absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-10 text-xs overflow-hidden"
+                                        :style="menuStyle"
+                                        class="fixed w-40 bg-white border border-gray-200 rounded-lg shadow-xl text-xs overflow-hidden"
+                                        style="z-index: 9999;"
                                     >
                                         <button @click="group.conditions.push({field: 'user_id', operator: '%', value: 100, comparator: '<', target: 10}); hasUnsavedChanges = true; showMenu = false" class="block w-full text-left px-3 py-2 hover:bg-blue-50 text-gray-700">哈希灰度</button>
                                         <button @click="group.conditions.push({field: 'user_id', operator: '==', value: ''}); hasUnsavedChanges = true; showMenu = false" class="block w-full text-left px-3 py-2 hover:bg-blue-50 text-gray-700">直接相等 ==</button>

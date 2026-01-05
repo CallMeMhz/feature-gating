@@ -16,6 +16,7 @@ class ItemData(BaseModel):
     name: str
     description: str = ""
     enabled: bool = True
+    value: str = ""  # 配置值，通过 /api/fg/get 获取
     conditions: List[dict] = []  # 保留，向后兼容
     condition_groups: List[ConditionGroupData] = []  # 新增：条件分组
 

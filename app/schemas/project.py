@@ -24,6 +24,7 @@ class Item(BaseModel):
     name: str
     description: str = ""
     enabled: bool = True
+    value: str = ""  # 配置值，通过 /api/fg/get 获取
     conditions: List[Condition] = []  # 保留，向后兼容
     condition_groups: List[ConditionGroup] = []  # 新增：条件分组
 

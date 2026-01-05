@@ -40,6 +40,21 @@
         ></textarea>
     </div>
     
+    <!-- 配置值 -->
+    <div x-init="if (item.value === undefined) item.value = ''">
+        <label class="block text-xs font-medium text-gray-700 mb-1">
+            配置值 <span class="text-gray-400 font-normal">(可选)</span>
+        </label>
+        <input 
+            type="text" 
+            x-model="item.value"
+            @input="hasUnsavedChanges = true"
+            class="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+            placeholder="如: 100 或 {&quot;limit&quot;: 5}"
+        >
+        <p class="text-xs text-gray-400 mt-1">通过 /api/fg/get 获取，支持任意字符串格式</p>
+    </div>
+    
     <!-- Enable/Disable 开关 -->
     <div class="flex items-center justify-between">
         <span class="text-xs font-medium text-gray-700">启用状态</span>

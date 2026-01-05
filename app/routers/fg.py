@@ -39,6 +39,18 @@ class FGDebugRequest(BaseModel):
     email: Optional[str] = None
 
 
+class FGGetRequest(BaseModel):
+    """FG 获取配置值请求"""
+    project: str
+    key: str
+
+
+class FGGetResponse(BaseModel):
+    """FG 获取配置值响应"""
+    value: str
+    key: str
+
+
 @router.post("/debug", response_model=FGDebugResponse)
 async def debug_feature_gate(request: FGDebugRequest):
     """使用 draft 配置检测命中情况（不需要保存）"""
@@ -146,6 +158,7 @@ async def _check_feature_gate(
         # 缓存 item（使用小写的 key 作为缓存键）
         cached_item = {
             "enabled": item.get("enabled", True),
+            "value": item.get("value", ""),
             "conditions": item.get("conditions", []),
             "condition_groups": item.get("condition_groups", [])
         }
@@ -180,4 +193,70 @@ async def _check_feature_gate(
         return FGCheckResponse(enabled=True, key=key)
     
     return FGCheckResponse(enabled=result, key=key)
+
+
+@router.get("/get", response_model=FGGetResponse)
+async def get_feature_value(
+    project: str,
+    key: str,
+    db: AsyncIOMotorDatabase = Depends(get_db)
+):
+    """获取功能配置值（GET 请求）"""
+    return await _get_feature_value(project, key, db)
+
+
+@router.post("/get", response_model=FGGetResponse)
+async def get_feature_value_post(
+    request: FGGetRequest,
+    db: AsyncIOMotorDatabase = Depends(get_db)
+):
+    """获取功能配置值（POST 请求）"""
+    return await _get_feature_value(request.project, request.key, db)
+
+
+async def _get_feature_value(
+    project: str,
+    key: str,
+    db: AsyncIOMotorDatabase
+) -> FGGetResponse:
+    """获取功能配置值核心逻辑"""
+    
+    # 1. 尝试从缓存获取
+    cached_item = get_cached_item(project, key)
+    
+    if cached_item is None:
+        # 2. 缓存未命中，从数据库查询
+        project_doc = await db.projects.find_one({"name": project})
+        if not project_doc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"项目 '{project}' 不存在"
+            )
+        
+        # 在项目的 items 数组中查找（大小写不敏感）
+        items = project_doc.get("items", [])
+        key_lower = key.lower()
+        item = next((i for i in items if i.get("name", "").lower() == key_lower), None)
+        
+        if not item:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"功能项 '{key}' 不存在"
+            )
+        
+        # 缓存 item（使用小写的 key 作为缓存键）
+        cached_item = {
+            "enabled": item.get("enabled", True),
+            "value": item.get("value", ""),
+            "conditions": item.get("conditions", []),
+            "condition_groups": item.get("condition_groups", [])
+        }
+        set_cached_item(project, key_lower, cached_item)
+    
+    # 3. 检查 enabled 开关，如果关闭则返回空字符串
+    if not cached_item["enabled"]:
+        return FGGetResponse(value="", key=key)
+    
+    # 4. 返回配置值
+    return FGGetResponse(value=cached_item.get("value", ""), key=key)
 

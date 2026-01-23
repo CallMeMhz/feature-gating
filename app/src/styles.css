@@ -5,6 +5,25 @@
   display: none !important; 
 }
 
+/* 移动端安全区域支持 (iPhone 底部) */
+.safe-area-bottom {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+}
+
+/* 移动端优化：更好的触摸目标 */
+@media (max-width: 767px) {
+  input, select, button, textarea {
+    font-size: 16px !important; /* 防止 iOS 自动缩放 */
+  }
+}
+
+/* 桌面端侧边栏始终显示（覆盖 Alpine.js 动态类） */
+@media (min-width: 768px) {
+  .md\:\!translate-x-0 {
+    transform: translateX(0) !important;
+  }
+}
+
 /* 滚动条样式 */
 ::-webkit-scrollbar {
   width: 8px;
